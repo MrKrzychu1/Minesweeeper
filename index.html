@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saper Klasyczny - Minesweeper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .digital-font {
+            font-family: 'Chakra Petch', monospace;
+            background: #111827;
+            color: #ef4444;
+            text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+        }
+
+
+        .num-1 { color: #2563eb; font-weight: 800; } 
+        .num-2 { color: #16a34a; font-weight: 800; } 
+        .num-3 { color: #dc2626; font-weight: 800; } 
+        .num-4 { color: #1e1b4b; font-weight: 800; } 
+        .num-5 { color: #831843; font-weight: 800; } 
+        .num-6 { color: #0d9488; font-weight: 800; }
+        .num-7 { color: #111827; font-weight: 800; }
+        .num-8 { color: #6b7280; font-weight: 800; }
+
+        .cell {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.05s ease;
+        }
+
+        .cell-covered {
+            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+            border-top: 3px solid #ffffff;
+            border-left: 3px solid #ffffff;
+            border-right: 3px solid #94a3b8;
+            border-bottom: 3px solid #94a3b8;
+            box-shadow: inset 0 0 2px rgba(255, 255, 255, 0.8);
+        }
+
+        .cell-covered:hover {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        }
+
+        .cell-covered:active {
+            border: 1px solid #94a3b8;
+            background: #cbd5e1;
+        }
+
+        .cell-revealed {
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+        }
+
+        .cell-mine-exploded {
+            background-color: #ef4444 !important;
+            border: 1px solid #b91c1c !important;
+            animation: pulse-red 0.5s ease;
+        }
+
+        .cell-wrong-flag {
+            background-color: #fecdd3;
+            border: 1px solid #f43f5e;
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+
+        .board-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .board-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .board-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .board-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-800 min-h-screen flex flex-col items-center justify-start p-2 sm:p-6">
+
+
+    <div class="w-full max-w-4xl bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-4 sm:p-6 flex flex-col items-center gap-6">
+        
+
+        <div class="w-full flex items-center justify-between border-b border-slate-700 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-amber-500 flex items-center justify-center text-white text-xl shadow-lg">
+                    <i class="fa-solid fa-land-mine-on"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-wide">SAPER</h1>
+                    <p class="text-xs text-slate-400">Klasyczna gra logiki i refleksu</p>
+                </div>
+            </div>
+            
+            <button id="btn-stats" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-semibold transition flex items-center gap-2 border border-slate-600">
+                <i class="fa-solid fa-trophy text-amber-400"></i>
+                <span class="hidden sm:inline">Wyniki</span>
+            </button>
+        </div>
+
+        <div class="w-full flex flex-wrap items-center justify-center gap-2 sm:gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-700/50">
+            <button data-level="easy" class="btn-diff px-4 py-2 rounded-lg font-bold text-sm transition bg-indigo-600 text-white shadow-md hover:bg-indigo-500">
+                Łatwy <span class="text-xs font-normal opacity-80">(9x9, 10 min)</span>
+            </button>
+            <button data-level="medium" class="btn-diff px-4 py-2 rounded-lg font-bold text-sm transition bg-slate-700 text-slate-300 hover:bg-slate-600">
+                Średni <span class="text-xs font-normal opacity-80">(16x16, 40 min)</span>
+            </button>
+            <button data-level="hard" class="btn-diff px-4 py-2 rounded-lg font-bold text-sm transition bg-slate-700 text-slate-300 hover:bg-slate-600">
+                Trudny <span class="text-xs font-normal opacity-80">(30x16, 99 min)</span>
+            </button>
+            <button data-level="custom" class="btn-diff px-4 py-2 rounded-lg font-bold text-sm transition bg-slate-700 text-slate-300 hover:bg-slate-600">
+                Własny
+            </button>
+        </div>
+
+        <div id="custom-panel" class="hidden w-full bg-slate-900/90 border border-indigo-500/30 p-4 rounded-xl flex flex-wrap items-center justify-center gap-4 text-white">
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-slate-400 font-semibold">Szerokość:</label>
+                <input type="number" id="custom-width" min="8" max="50" value="12" class="w-16 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-center text-sm font-bold text-white focus:outline-none focus:border-indigo-500">
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-slate-400 font-semibold">Wysokość:</label>
+                <input type="number" id="custom-height" min="8" max="30" value="12" class="w-16 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-center text-sm font-bold text-white focus:outline-none focus:border-indigo-500">
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-slate-400 font-semibold">Miny:</label>
+                <input type="number" id="custom-mines" min="1" max="500" value="20" class="w-20 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-center text-sm font-bold text-white focus:outline-none focus:border-indigo-500">
+            </div>
+            <button id="btn-apply-custom" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-bold transition">Zastosuj</button>
+        </div>
+        <div class="sm:hidden w-full flex items-center justify-center gap-2 bg-slate-900/80 p-2 rounded-xl border border-slate-700">
+            <span class="text-xs text-slate-400 font-semibold mr-2">Tryb dotyku:</span>
+            <button id="mode-dig" class="flex-1 py-2 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 bg-indigo-600 text-white shadow">
+                <i class="fa-solid fa-shovel"></i> Odkrywaj
+            </button>
+            <button id="mode-flag" class="flex-1 py-2 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 bg-slate-700 text-slate-300">
+                <i class="fa-solid fa-flag text-red-500"></i> Stawiaj Flagę
+            </button>
+        </div>
+
+        <div class="bg-slate-300 p-4 sm:p-5 rounded-2xl border-4 border-slate-400 shadow-inner flex flex-col items-center gap-4 max-w-full">
+            
+            <div class="w-full bg-slate-400 p-3 rounded-xl border-2 border-slate-500 flex items-center justify-between shadow-inner gap-2">
+                
+                <div class="px-3 py-1.5 rounded-md digital-font text-2xl sm:text-3xl tracking-widest border border-slate-800 shadow-inner">
+                    <span id="mines-count">010</span>
+                </div>
+
+                <button id="btn-reset" class="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-b from-slate-100 to-slate-200 hover:from-white hover:to-slate-100 active:translate-y-0.5 rounded-xl border-2 border-slate-400 shadow-md flex items-center justify-center text-2xl sm:text-3xl transition">
+                    <span id="face-emoji">🙂</span>
+                </button>
+
+                <div class="px-3 py-1.5 rounded-md digital-font text-2xl sm:text-3xl tracking-widest border border-slate-800 shadow-inner">
+                    <span id="timer-count">000</span>
+                </div>
+            </div>
+
+            <div class="board-container max-w-full max-h-[65vh] overflow-auto rounded-lg border-2 border-slate-500 bg-slate-200 p-2 shadow-inner">
+                <div id="minefield" class="grid gap-0.5 select-none mx-auto"></div>
+            </div>
+
+        </div>
+
+        <div class="text-xs text-slate-400 text-center flex flex-wrap justify-center gap-4 pt-1">
+            <span><strong class="text-slate-200">LMB:</strong> Odkryj pole</span>
+            <span><strong class="text-slate-200">RMB:</strong> Postaw flagę</span>
+            <span><strong class="text-slate-200">Chording:</strong> Kliknij cyfrę przy pełnych flagach</span>
+        </div>
+
+    </div>
+
+    <div id="stats-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-6 text-white shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <button id="btn-close-stats" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="flex items-center gap-3 mb-6">
+                <i class="fa-solid fa-trophy text-amber-400 text-2xl"></i>
+                <h2 class="text-xl font-bold">Najlepsze Wyniki (Rekordy)</h2>
+            </div>
+            
+            <div class="space-y-3">
+                <div class="flex justify-between items-center p-3 bg-slate-900/60 rounded-xl border border-slate-700">
+                    <span class="font-semibold text-sm text-indigo-400">Łatwy (9x9)</span>
+                    <span id="score-easy" class="font-mono font-bold text-amber-300">-- s</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-slate-900/60 rounded-xl border border-slate-700">
+                    <span class="font-semibold text-sm text-indigo-400">Średni (16x16)</span>
+                    <span id="score-medium" class="font-mono font-bold text-amber-300">-- s</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-slate-900/60 rounded-xl border border-slate-700">
+                    <span class="font-semibold text-sm text-indigo-400">Trudny (30x16)</span>
+                    <span id="score-hard" class="font-mono font-bold text-amber-300">-- s</span>
+                </div>
+            </div>
+
+            <button id="btn-clear-stats" class="mt-6 w-full py-2 bg-red-900/40 hover:bg-red-800/60 text-red-300 border border-red-700/50 rounded-xl text-xs font-semibold transition">
+
+            </button>
+        </div>
+    </div>
+
+
+    <script>
+
+        const LEVELS = {
+            easy: { width: 9, height: 9, mines: 10 },
+            medium: { width: 16, height: 16, mines: 40 },
+            hard: { width: 30, height: 16, mines: 99 },
+            custom: { width: 12, height: 12, mines: 20 }
+        };
+
+        let currentLevel = 'easy';
+        let width = LEVELS.easy.width;
+        let height = LEVELS.easy.height;
+        let totalMines = LEVELS.easy.mines;
+        
+        let board = [];
+        let gameStarted = false;
+        let gameOver = false;
+        let gameWon = false;
+        let flagsCount = 0;
+        let timer = 0;
+        let timerInterval = null;
+        let touchMode = 'dig';
+
+
+        const minefieldEl = document.getElementById('minefield');
+        const minesCountEl = document.getElementById('mines-count');
+        const timerCountEl = document.getElementById('timer-count');
+        const faceEmojiEl = document.getElementById('face-emoji');
+        const btnReset = document.getElementById('btn-reset');
+        const customPanel = document.getElementById('custom-panel');
+        
+
+        const modeDigBtn = document.getElementById('mode-dig');
+        const modeFlagBtn = document.getElementById('mode-flag');
+
+        const statsModal = document.getElementById('stats-modal');
+        const btnStats = document.getElementById('btn-stats');
+        const btnCloseStats = document.getElementById('btn-close-stats');
+        const btnClearStats = document.getElementById('btn-clear-stats');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initGame();
+            setupEventListeners();
+            loadBestTimes();
+        });
+
+
+        function initGame() {
+            clearInterval(timerInterval);
+            timer = 0;
+            gameStarted = false;
+            gameOver = false;
+            gameWon = false;
+            flagsCount = 0;
+            
+            updateTimerDisplay();
+            updateMinesDisplay();
+            setFaceEmoji('🙂');
+
+
+            board = [];
+            for (let r = 0; r < height; r++) {
+                let row = [];
+                for (let c = 0; c < width; c++) {
+                    row.push({
+                        r, c,
+                        mine: false,
+                        revealed: false,
+                        flagged: false,
+                        count: 0
+                    });
+                }
+                board.push(row);
+            }
+
+            renderBoard();
+        }
+
+        function renderBoard() {
+            minefieldEl.innerHTML = '';
+            minefieldEl.style.gridTemplateColumns = `repeat(${width}, minmax(0, 1fr))`;
+
+            for (let r = 0; r < height; r++) {
+                for (let c = 0; c < width; c++) {
+                    const cellEl = document.createElement('div');
+                    cellEl.id = `cell-${r}-${c}`;
+                    cellEl.className = 'cell cell-covered rounded-md';
+                    
+
+                    cellEl.addEventListener('mousedown', (e) => handleCellMouseDown(e, r, c));
+                    cellEl.addEventListener('mouseup', (e) => handleCellMouseUp(e, r, c));
+                    cellEl.addEventListener('contextmenu', (e) => e.preventDefault()); // Blokowanie menu podręcznego
+
+                    minefieldEl.appendChild(cellEl);
+                }
+            }
+        }
+
+        function generateMines(firstR, firstC) {
+            let placed = 0;
+            while (placed < totalMines) {
+                let randR = Math.floor(Math.random() * height);
+                let randC = Math.floor(Math.random() * width);
+
+                const isFirstCellArea = Math.abs(randR - firstR) <= 1 && Math.abs(randC - firstC) <= 1;
+
+                if (!board[randR][randC].mine && !isFirstCellArea) {
+                    board[randR][randC].mine = true;
+                    placed++;
+                }
+            }
+
+
+            for (let r = 0; r < height; r++) {
+                for (let c = 0; c < width; c++) {
+                    if (!board[r][c].mine) {
+                        board[r][c].count = countNeighborMines(r, c);
+                    }
+                }
+            }
+        }
+
+
+        function countNeighborMines(r, c) {
+            let count = 0;
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+                    let nr = r + dr;
+                    let nc = c + dc;
+                    if (nr >= 0 && nr < height && nc >= 0 && nc < width) {
+                        if (board[nr][nc].mine) count++;
+                    }
+                }
+            }
+            return count;
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timer++;
+                if (timer > 999) timer = 999;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+
+        function updateTimerDisplay() {
+            timerCountEl.textContent = String(timer).padStart(3, '0');
+        }
+
+        function updateMinesDisplay() {
+            let remaining = totalMines - flagsCount;
+            if (remaining < -99) remaining = -99;
+            if (remaining >= 0) {
+                minesCountEl.textContent = String(remaining).padStart(3, '0');
+            } else {
+                minesCountEl.textContent = '-' + String(Math.abs(remaining)).padStart(2, '0');
+            }
+        }
+
+        function setFaceEmoji(emoji) {
+            faceEmojiEl.textContent = emoji;
+        }
+
+
+        function handleCellMouseDown(e, r, c) {
+            if (gameOver || gameWon) return;
+            if (e.button === 0) { // LPM
+                setFaceEmoji('😮');
+            }
+        }
+
+        function handleCellMouseUp(e, r, c) {
+            if (gameOver || gameWon) return;
+            setFaceEmoji('🙂');
+
+            const cell = board[r][c];
+
+            const isFlagModeActive = (touchMode === 'flag');
+
+
+            if (e.button === 2 || (e.button === 0 && isFlagModeActive)) {
+                toggleFlag(cell);
+                return;
+            }
+
+            if (e.button === 0 && !isFlagModeActive) {
+                if (cell.flagged) return;
+
+                if (!gameStarted) {
+                    gameStarted = true;
+                    generateMines(r, c);
+                    startTimer();
+                }
+
+                if (cell.revealed) {
+                    doChording(r, c);
+                } else {
+                    revealCell(r, c);
+                }
+            }
+        }
+
+        function toggleFlag(cell) {
+            if (cell.revealed) return;
+
+            cell.flagged = !cell.flagged;
+            flagsCount += cell.flagged ? 1 : -1;
+            updateMinesDisplay();
+
+            const cellEl = document.getElementById(`cell-${cell.r}-${cell.c}`);
+            if (cell.flagged) {
+                cellEl.innerHTML = '<i class="fa-solid fa-flag text-red-600 text-sm animate-bounce"></i>';
+            } else {
+                cellEl.innerHTML = '';
+            }
+        }
+
+        function revealCell(r, c) {
+            const cell = board[r][c];
+            if (cell.revealed || cell.flagged) return;
+
+            cell.revealed = true;
+            const cellEl = document.getElementById(`cell-${r}-${c}`);
+            
+            cellEl.classList.remove('cell-covered');
+            cellEl.classList.add('cell-revealed');
+
+            if (cell.mine) {
+                cellEl.classList.add('cell-mine-exploded');
+                cellEl.innerHTML = '<i class="fa-solid fa-land-mine-on text-slate-900 text-base"></i>';
+                triggerGameOver(r, c);
+                return;
+            }
+
+            if (cell.count > 0) {
+                cellEl.innerHTML = `<span class="num-${cell.count}">${cell.count}</span>`;
+            } else {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        let nr = r + dr;
+                        let nc = c + dc;
+                        if (nr >= 0 && nr < height && nc >= 0 && nc < width) {
+                            if (!board[nr][nc].revealed) {
+                                revealCell(nr, nc);
+                            }
+                        }
+                    }
+                }
+            }
+
+            checkWinCondition();
+        }
+
+        function doChording(r, c) {
+            const cell = board[r][c];
+            if (!cell.revealed || cell.count === 0) return;
+
+            let flagCount = 0;
+            let unrevealedNeighbors = [];
+
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+                    let nr = r + dr;
+                    let nc = c + dc;
+                    if (nr >= 0 && nr < height && nc >= 0 && nc < width) {
+                        const neighbor = board[nr][nc];
+                        if (neighbor.flagged) flagCount++;
+                        if (!neighbor.revealed && !neighbor.flagged) {
+                            unrevealedNeighbors.push(neighbor);
+                        }
+                    }
+                }
+            }
+
+            if (flagCount === cell.count) {
+                unrevealedNeighbors.forEach(n => {
+                    revealCell(n.r, n.c);
+                });
+            }
+        }
+
+        // Przegrana
+        function triggerGameOver(explodedR, explodedC) {
+            gameOver = true;
+            clearInterval(timerInterval);
+            setFaceEmoji('😵');
+
+            for (let r = 0; r < height; r++) {
+                for (let c = 0; c < width; c++) {
+                    const cell = board[r][c];
+                    const cellEl = document.getElementById(`cell-${r}-${c}`);
+
+                    if (cell.mine && !cell.flagged && !(r === explodedR && c === explodedC)) {
+                        cellEl.classList.remove('cell-covered');
+                        cellEl.classList.add('cell-revealed');
+                        cellEl.innerHTML = '<i class="fa-solid fa-burst text-slate-700 text-sm"></i>';
+                    } else if (!cell.mine && cell.flagged) {
+                        cellEl.classList.add('cell-wrong-flag');
+                        cellEl.innerHTML = '<i class="fa-solid fa-xmark text-red-600 font-bold text-lg"></i>';
+                    }
+                }
+            }
+        }
+
+        function checkWinCondition() {
+            let revealedCount = 0;
+            for (let r = 0; r < height; r++) {
+                for (let c = 0; c < width; c++) {
+                    if (board[r][c].revealed) revealedCount++;
+                }
+            }
+
+            if (revealedCount === (width * height) - totalMines) {
+                gameWon = true;
+                clearInterval(timerInterval);
+                setFaceEmoji('😎');
+
+                for (let r = 0; r < height; r++) {
+                    for (let c = 0; c < width; c++) {
+                        if (board[r][c].mine && !board[r][c].flagged) {
+                            board[r][c].flagged = true;
+                            const cellEl = document.getElementById(`cell-${r}-${c}`);
+                            cellEl.innerHTML = '<i class="fa-solid fa-flag text-red-600 text-sm"></i>';
+                        }
+                    }
+                }
+                flagsCount = totalMines;
+                updateMinesDisplay();
+
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+
+                saveBestTime(currentLevel, timer);
+            }
+        }
+
+        function saveBestTime(level, time) {
+            if (level === 'custom') return;
+
+            const currentRecord = localStorage.getItem(`minesweeper_best_${level}`);
+            if (!currentRecord || time < parseInt(currentRecord)) {
+                localStorage.setItem(`minesweeper_best_${level}`, time);
+                loadBestTimes();
+            }
+        }
+
+        function loadBestTimes() {
+            const easy = localStorage.getItem('minesweeper_best_easy');
+            const medium = localStorage.getItem('minesweeper_best_medium');
+            const hard = localStorage.getItem('minesweeper_best_hard');
+
+            document.getElementById('score-easy').textContent = easy ? `${easy} s` : '-- s';
+            document.getElementById('score-medium').textContent = medium ? `${medium} s` : '-- s';
+            document.getElementById('score-hard').textContent = hard ? `${hard} s` : '-- s';
+        }
+
+        function setupEventListeners() {
+            // Przycisk resetu gry
+            btnReset.addEventListener('click', () => initGame());
+
+            document.querySelectorAll('.btn-diff').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const level = e.currentTarget.getAttribute('data-level');
+                    
+                    document.querySelectorAll('.btn-diff').forEach(b => {
+                        b.classList.remove('bg-indigo-600', 'text-white');
+                        b.classList.add('bg-slate-700', 'text-slate-300');
+                    });
+
+                    e.currentTarget.classList.remove('bg-slate-700', 'text-slate-300');
+                    e.currentTarget.classList.add('bg-indigo-600', 'text-white');
+
+                    if (level === 'custom') {
+                        customPanel.classList.remove('hidden');
+                        currentLevel = 'custom';
+                    } else {
+                        customPanel.classList.add('hidden');
+                        currentLevel = level;
+                        width = LEVELS[level].width;
+                        height = LEVELS[level].height;
+                        totalMines = LEVELS[level].mines;
+                        initGame();
+                    }
+                });
+            });
+
+            document.getElementById('btn-apply-custom').addEventListener('click', () => {
+                const w = parseInt(document.getElementById('custom-width').value) || 10;
+                const h = parseInt(document.getElementById('custom-height').value) || 10;
+                const m = parseInt(document.getElementById('custom-mines').value) || 10;
+
+                const maxAllowedMines = Math.floor((w * h) * 0.8);
+
+                width = Math.max(8, Math.min(50, w));
+                height = Math.max(8, Math.min(30, h));
+                totalMines = Math.max(1, Math.min(maxAllowedMines, m));
+
+                initGame();
+            });
+
+            modeDigBtn.addEventListener('click', () => {
+                touchMode = 'dig';
+                modeDigBtn.classList.replace('bg-slate-700', 'bg-indigo-600');
+                modeDigBtn.classList.replace('text-slate-300', 'text-white');
+                modeFlagBtn.classList.replace('bg-indigo-600', 'bg-slate-700');
+                modeFlagBtn.classList.replace('text-white', 'text-slate-300');
+            });
+
+            modeFlagBtn.addEventListener('click', () => {
+                touchMode = 'flag';
+                modeFlagBtn.classList.replace('bg-slate-700', 'bg-indigo-600');
+                modeFlagBtn.classList.replace('text-slate-300', 'text-white');
+                modeDigBtn.classList.replace('bg-indigo-600', 'bg-slate-700');
+                modeDigBtn.classList.replace('text-white', 'text-slate-300');
+            });
+
+            btnStats.addEventListener('click', () => statsModal.classList.remove('hidden'), statsModal.classList.add('flex'));
+            btnCloseStats.addEventListener('click', () => statsModal.classList.add('hidden'));
+            btnClearStats.addEventListener('click', () => {
+                localStorage.removeItem('minesweeper_best_easy');
+                localStorage.removeItem('minesweeper_best_medium');
+                localStorage.removeItem('minesweeper_best_hard');
+                loadBestTimes();
+            });
+        }
+    </script>
+</body>
+</html>
